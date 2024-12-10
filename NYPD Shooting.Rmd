@@ -1,0 +1,100 @@
+---
+title: "NYPD Shooting"
+author: ''
+date: ''
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+```
+
+## NYPD Shooting Data
+
+This document's created to analyze NYPD Shooting Incident Data available through <https://catalog.data.gov/dataset>.
+
+This Markdown uses **tidyverse** and **lubridate** R Packages.
+
+The data is a list of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year. 
+
+importing data set and summarizing the data:
+
+```{r, message=FALSE}
+NYPD_Shooting <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+```
+
+```{r}
+summary(NYPD_Shooting)
+```
+
+## Cleaning the data and changing datatypes
+
+We are going to remove the Incident_key, exact occur time and exact geographical coordinates from the data set. We do not use the columns with missing data as it might introduce bias and inaccurate results/interpretations. 
+
+Also changing the Occur_date type to <date> and other categorical column types to factors, summarizing the transformed data set:
+
+
+```{r}
+NYPD_Shooting <- NYPD_Shooting %>% select(-c(INCIDENT_KEY, OCCUR_TIME, X_COORD_CD, Y_COORD_CD, Latitude, Longitude, Lon_Lat)) %>% mutate(OCCUR_DATE = mdy(OCCUR_DATE), BORO = as.factor(BORO), LOC_OF_OCCUR_DESC = as.factor(LOC_OF_OCCUR_DESC), LOC_CLASSFCTN_DESC = as.factor(LOC_CLASSFCTN_DESC), LOCATION_DESC = as.factor(LOCATION_DESC), PERP_AGE_GROUP = as.factor(PERP_AGE_GROUP), PERP_SEX = as.factor(PERP_SEX), PERP_RACE = as.factor(PERP_RACE), VIC_AGE_GROUP=as.factor(VIC_AGE_GROUP), VIC_SEX=as.factor(VIC_SEX), VIC_RACE = as.factor(VIC_RACE), JURISDICTION_CODE=as.factor(JURISDICTION_CODE), PRECINCT = as.factor(PRECINCT))
+```
+
+```{r}
+summary(NYPD_Shooting)
+```
+
+## Visualizations & Analysis
+
+Now let's take a first look at the overall shooting incidents trend from 2006:
+
+```{r,  message==FALSE}
+NYPD_Shooting_grouped_by_year <- NYPD_Shooting %>% mutate(year = year(OCCUR_DATE)) %>% group_by(year) %>% summarize(shooting_count = n())  %>% ungroup()
+```
+
+```{r}
+NYPD_Shooting_grouped_by_year %>% ggplot(aes(x = year, y = shooting_count)) + geom_line(color = "orange") + geom_point(color = "red")+ labs(title = "Shooting Incidents in NYC", y = NULL) + theme(plot.title = element_text(hjust = 0.5))
+```
+
+As can be seen there was an overall drop starting from 2012 which continued till the year 2020 when the numbers rose to the previous high-levels followed by the downward trend after 2021.
+
+Now let's take a look at different boroughs where the shooting incident occurred:
+
+```{r, message=FALSE}
+NYPD_Shooting_grouped_by_yearBorough <- NYPD_Shooting %>% mutate(year = year(OCCUR_DATE)) %>% group_by(year, BORO) %>% summarize(shooting_count = n())  %>% ungroup()
+```
+
+```{r}
+NYPD_Shooting_grouped_by_yearBorough %>% ggplot(aes(x = year, y = shooting_count, color = BORO)) + geom_line() + geom_point() + labs(title = "Shooting Incidents in by Borough", y = NULL, color = "Borough") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+as can be seen from the data of the Incidents by Borough, all boroughs follow the same trend seen overall for NYC. Brooklyn and Bronx have the highest numbers over the years with Staten Island remaining stable and under 100 over the years.
+
+## Sources of Bias
+
+I've not used the perpetrator and victim race in my analysis which could lead to racial profiling and bias as based on the demographics in each borough it might lead to incorrect generalizations and errors.
+
+## Model
+
+We can develop a model now to get an estimate for the numbers in the future years, based on the trend observed from 2006 onward. 
+
+```{r}
+mod <- lm(shooting_count ~ year, data = NYPD_Shooting_grouped_by_year)
+```
+
+```{r}
+summary(mod)
+```
+
+## Conclusion
+
+In this report we have taken a look at the Shooting Incidents registered by NYPD for NYC since 2006. We have looked at the trends and have discovered periods of low shootings before rising again around 2020 and then continuing the downward trend as observed in 2010s. We then took a closer look at the Incidents by Borough, all boroughs follow the same trend seen overall for NYC. Brooklyn and Bronx have the highest numbers over the years with Staten Island remaining stable and under 100 over the years. We have then developed a model for shooting count as a function of year, for an estimate of the resources needed for NYPD to better handle these shooting Incidents.
+
+## Session Info 
+
+
+```{r, eval=TRUE, echo=FALSE}
+sessionInfo()
+```
